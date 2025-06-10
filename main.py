@@ -51,7 +51,9 @@ app = FastAPI(
 
 # CORS configuration
 origins = [
-    "*",  # Allow all origins for development - restrict in production
+    "http://localhost:3000",
+    "https://ssohail.com",
+    "https://www.ssohail.com"
 ]
 
 app.add_middleware(
@@ -60,6 +62,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Length", "Content-Type", "Content-Disposition"],
+    max_age=3600
 )
 
 class TTSRequest(BaseModel):
@@ -265,7 +269,7 @@ async def generate_speech(request: TTSRequest, background_tasks: BackgroundTasks
         # Add cleanup task
         background_tasks.add_task(gc.collect)
         
-        # Return audio as streaming response
+        # Return audio as streaming response with CORS headers
         return StreamingResponse(
             io.BytesIO(audio_data),
             media_type="audio/wav",
@@ -274,7 +278,10 @@ async def generate_speech(request: TTSRequest, background_tasks: BackgroundTasks
                 "Content-Length": str(len(audio_data)),
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
-                "Expires": "0"
+                "Expires": "0",
+                "Access-Control-Allow-Origin": request.headers.get("origin", origins[0]),
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Expose-Headers": "Content-Length, Content-Type, Content-Disposition"
             }
         )
         
