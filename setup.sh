@@ -229,16 +229,24 @@ EOF
 # Create requirements.txt
 echo "📝 Creating requirements.txt..."
 cat > requirements.txt << 'EOF'
-numpy==1.22.0
-torch==2.1.0
-torchaudio==2.1.0
-TTS==0.20.6
+# Core dependencies with more stable versions
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 python-multipart==0.0.6
-scipy==1.11.4
+
+# TTS dependencies - using more conservative versions
+torch==2.0.1
+torchaudio==2.0.2
+numpy==1.24.3
+scipy==1.10.1
 soundfile==0.12.1
+
+# TTS library - updated to a compatible version
+TTS==0.22.0
+
+# Additional audio processing
+librosa==0.10.1
 EOF
 
 # Create Dockerfile

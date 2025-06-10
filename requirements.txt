@@ -11,8 +11,8 @@ numpy==1.24.3
 scipy==1.10.1
 soundfile==0.12.1
 
-# TTS library - specific stable version
-TTS==0.19.6
+# TTS library - updated to a compatible version
+TTS==0.22.0
 
 # Additional audio processing
 librosa==0.10.1
