@@ -1,38 +1,32 @@
-# Core web framework dependencies
+# Core web framework dependencies - minimal versions
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
-python-multipart==0.0.6
 
-# TTS Library and its core dependencies
+# Essential TTS dependencies only
 TTS==0.22.0
-numpy
-scipy
-torch
-torchaudio
 
-# Audio processing dependencies
-librosa
-soundfile
-numba
+# Minimal required dependencies
+numpy==1.24.3
+torch==2.0.1
+torchaudio==2.0.2
 
-# Additional required dependencies for TTS
-mecab-python3
-unidic-lite
-jamo
-pypinyin
-jieba
-bangla
-bnnumerizer
-bnunicodenormalizer
+# Audio processing - essential only
+soundfile==0.12.1
+librosa==0.10.1
 
-# System dependencies
-packaging
-pyyaml
-inflect
-tqdm
-matplotlib
-pandas
+# System monitoring
+psutil==5.9.6
 
-# Optional but recommended for better performance
-psutil
+# Essential text processing
+inflect==7.0.0
+pyyaml==6.0.1
+
+# Remove heavy dependencies that aren't essential:
+# - scipy (not critical for basic TTS)
+# - matplotlib (not needed for API)
+# - pandas (not needed for API)
+# - mecab-python3 (only needed for Japanese)
+# - jieba (only needed for Chinese)
+# - bangla dependencies (only needed for Bangla)
+# - numba (heavy compilation, not essential)

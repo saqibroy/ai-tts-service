@@ -44,8 +44,6 @@ RUN pip install --no-cache-dir --upgrade pip==23.3.1 setuptools==68.2.2 wheel==0
 RUN pip install --no-cache-dir --verbose \
     numpy==1.22.0 \
     && pip install --no-cache-dir --verbose \
-    scipy==1.9.3 \
-    && pip install --no-cache-dir --verbose \
     torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir --verbose \
     torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
