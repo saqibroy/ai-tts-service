@@ -1,18 +1,40 @@
-# Core dependencies with more stable versions
+# Core web framework dependencies
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 python-multipart==0.0.6
 
-# TTS dependencies - using compatible versions
-torch>=2.1.0
-torchaudio>=2.1.0
-numpy>=1.24.3
-scipy>=1.11.2
-soundfile>=0.12.1
+# TTS Library - pinned to compatible version
+TTS==0.22.0
 
-# TTS library - using latest stable version
-TTS>=0.21.0
+# Core dependencies - versions compatible with TTS==0.22.0
+numpy==1.22.0
+scipy==1.9.3
+torch==2.0.1
+torchaudio==2.0.2
 
-# Additional audio processing
-librosa>=0.10.1
+# Audio processing dependencies - compatible versions
+librosa==0.9.2
+soundfile==0.12.1
+numba==0.56.4
+
+# Additional required dependencies for TTS
+mecab-python3==1.0.6
+unidic-lite==1.0.8
+jamo==0.4.1
+pypinyin==0.47.1
+jieba==0.42.1
+bangla==0.0.2
+bnnumerizer==0.0.2
+bnunicodenormalizer==0.1.1
+
+# System dependencies
+packaging>=21.0
+pyyaml>=6.0
+inflect>=6.0.0
+tqdm>=4.64.0
+matplotlib>=3.5.0
+pandas>=1.5.0
+
+# Optional but recommended for better performance
+psutil>=5.9.0

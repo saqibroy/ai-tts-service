@@ -1,9 +1,27 @@
-# Render.com service definition for ai-tts-service
-# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
 services:
   - type: web
     name: ai-tts-service
     env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
-    healthCheckPath: /health 
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip==23.3.1 setuptools==68.2.2 wheel==0.41.2 &&
+      pip install numpy==1.22.0 &&
+      pip install scipy==1.9.3 &&
+      pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu &&
+      pip install torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu &&
+      pip install -r requirements.txt
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 30"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTORCH_CUDA_ALLOC_CONF
+        value: "max_split_size_mb:128"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: NUMBA_CACHE_DIR
+        value: "/tmp/numba_cache"
