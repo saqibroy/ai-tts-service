@@ -1,26 +1,26 @@
-# Core web framework dependencies - minimal versions
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
+# Core web framework dependencies
+fastapi
+uvicorn[standard]
+pydantic
 
-# Essential TTS dependencies only
-TTS==0.22.0
+# Essential TTS dependencies
+TTS
 
 # Minimal required dependencies
-numpy==1.24.3
-torch==2.0.1
-torchaudio==2.0.2
+numpy
+torch
+torchaudio
 
-# Audio processing - essential only
-soundfile==0.12.1
-librosa==0.10.1
+# Audio processing
+soundfile
+librosa
 
 # System monitoring
-psutil==5.9.6
+psutil
 
 # Essential text processing
-inflect==7.0.0
-pyyaml==6.0.1
+inflect
+pyyaml
 
 # Remove heavy dependencies that aren't essential:
 # - scipy (not critical for basic TTS)

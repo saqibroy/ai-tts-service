@@ -37,18 +37,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Upgrade pip and install Python dependencies
-# Install in specific order to avoid conflicts
-RUN pip install --no-cache-dir --upgrade pip==23.3.1 setuptools==68.2.2 wheel==0.41.2
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Install dependencies with verbose output for debugging
-RUN pip install --no-cache-dir --verbose \
-    numpy==1.22.0 \
-    && pip install --no-cache-dir --verbose \
-    torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir --verbose \
-    torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies
 RUN pip install --no-cache-dir --verbose -r requirements.txt
 
 # Copy application code

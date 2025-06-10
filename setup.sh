@@ -23,29 +23,29 @@ cd ai-tts-service
 # Create requirements.txt
 echo "📝 Creating requirements.txt..."
 cat > requirements.txt << 'EOF'
-# Core web framework dependencies - minimal versions
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
+# Core web framework dependencies
+fastapi
+uvicorn[standard]
+pydantic
 
-# Essential TTS dependencies only
-TTS==0.22.0
+# Essential TTS dependencies
+TTS
 
 # Minimal required dependencies
-numpy==1.24.3
-torch==2.0.1
-torchaudio==2.0.2
+numpy
+torch
+torchaudio
 
-# Audio processing - essential only
-soundfile==0.12.1
-librosa==0.10.1
+# Audio processing
+soundfile
+librosa
 
 # System monitoring
-psutil==5.9.6
+psutil
 
 # Essential text processing
-inflect==7.0.0
-pyyaml==6.0.1
+inflect
+pyyaml
 EOF
 
 # Create Dockerfile
@@ -90,18 +90,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Upgrade pip and install Python dependencies
-# Install in specific order to avoid conflicts
-RUN pip install --no-cache-dir --upgrade pip==23.3.1 setuptools==68.2.2 wheel==0.41.2
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Install dependencies with verbose output for debugging
-RUN pip install --no-cache-dir --verbose \
-    numpy==1.22.0 \
-    && pip install --no-cache-dir --verbose \
-    torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir --verbose \
-    torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies
 RUN pip install --no-cache-dir --verbose -r requirements.txt
 
 # Copy application code
@@ -129,10 +120,9 @@ services:
     name: ai-tts-service
     env: python
     plan: free
-    # Simplified build command to reduce memory usage during build
+    # Simplified build command
     buildCommand: |
-      pip install --no-cache-dir --upgrade pip==23.3.1 &&
-      pip install --no-cache-dir torch==2.0.1 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu &&
+      pip install --no-cache-dir --upgrade pip setuptools wheel &&
       pip install --no-cache-dir -r requirements.txt
     # Optimized start command with memory limits
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120 --timeout-graceful-shutdown 120 --limit-concurrency 10 --backlog 2048"

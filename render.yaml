@@ -3,13 +3,12 @@ services:
     name: ai-tts-service
     env: python
     plan: free
-    # Simplified build command to reduce memory usage during build
+    # Simplified build command
     buildCommand: |
-      pip install --no-cache-dir --upgrade pip==23.3.1 &&
-      pip install --no-cache-dir torch==2.0.1 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu &&
+      pip install --no-cache-dir --upgrade pip setuptools wheel &&
       pip install --no-cache-dir -r requirements.txt
     # Optimized start command with memory limits
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 30 --limit-concurrency 5 --backlog 128"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120 --timeout-graceful-shutdown 120 --limit-concurrency 10 --backlog 2048"
     healthCheckPath: /health
     # Memory optimization environment variables
     envVars:
@@ -19,7 +18,7 @@ services:
         value: "1"
       # Aggressive memory management for PyTorch
       - key: PYTORCH_CUDA_ALLOC_CONF
-        value: "max_split_size_mb:32"
+        value: "max_split_size_mb:128"
       - key: OMP_NUM_THREADS
         value: "1"
       - key: MKL_NUM_THREADS
