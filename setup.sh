@@ -235,18 +235,18 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 python-multipart==0.0.6
 
-# TTS dependencies - using more conservative versions
-torch==2.0.1
-torchaudio==2.0.2
-numpy==1.24.3
+# TTS dependencies - using compatible versions
+torch>=2.1.0
+torchaudio>=2.1.0
+numpy>=1.24.3
 scipy>=1.11.2
-soundfile==0.12.1
+soundfile>=0.12.1
 
-# TTS library - using a more stable version
-TTS==0.21.0
+# TTS library - using latest stable version
+TTS>=0.21.0
 
 # Additional audio processing
-librosa==0.10.1
+librosa>=0.10.1
 EOF
 
 # Create Dockerfile
