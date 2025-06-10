@@ -239,11 +239,11 @@ python-multipart==0.0.6
 torch==2.0.1
 torchaudio==2.0.2
 numpy==1.24.3
-scipy==1.10.1
+scipy>=1.11.2
 soundfile==0.12.1
 
-# TTS library - updated to a compatible version
-TTS==0.22.0
+# TTS library - using a more stable version
+TTS==0.21.0
 
 # Additional audio processing
 librosa==0.10.1
@@ -261,32 +261,27 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # Ensure Python's stdout/stderr is immediately flushed for real-time logging
 ENV PYTHONUNBUFFERED 1
 
+# Set environment variables for memory optimization
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
 # --- System Dependencies for Building and Runtime ---
-# This layer installs essential build tools, OpenSSL development libraries,
-# and ffmpeg for audio processing.
-# The `libffi-dev` package is often required for certain cryptography-related
-# Python packages that might get pulled in by your dependencies.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         libssl-dev \
         libffi-dev \
         ffmpeg \
-    # Clean up apt cache to keep image size small
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory for the application
+# Set working directory
 WORKDIR /app
 
 # Copy requirements.txt first to leverage Docker's build cache
 COPY --link requirements.txt .
 
 # --- Python Environment Setup and Dependency Installation ---
-# Upgrade pip to the latest version. This is critical as older pip versions
-# can sometimes struggle with modern dependency resolution or SSL handling.
-# Then, install all Python dependencies.
-# We also include 'setuptools' and 'wheel' as they are often implicit
-# dependencies for complex package installations (like those with C extensions).
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -297,21 +292,28 @@ COPY . .
 EXPOSE 8000
 
 # Define the command to run your FastAPI application using Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Using 1 worker to reduce memory usage
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 EOF
 
 # Create render.yaml
 echo "📝 Creating render.yaml..."
 cat > render.yaml << 'EOF'
-# Render.com service definition for ai-tts-service
-# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
 services:
   - type: web
     name: ai-tts-service
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
     healthCheckPath: /health
+    # Add memory optimization settings
+    envVars:
+      - key: PYTORCH_CUDA_ALLOC_CONF
+        value: max_split_size_mb:128
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
 EOF
 
 # Create .gitignore
