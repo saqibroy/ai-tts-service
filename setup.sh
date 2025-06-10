@@ -41,10 +41,16 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI TTS Microservice", version="1.0.0")
 
+origins = [
+    "http://localhost:3000",  # Your Next.js local development server
+    "https://ssohail.com",    # Your Next.js production domain
+    # Add any other domains that need to access your API
+]
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly in production
+    allow_origins=origins,  # Configure this properly in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
