@@ -232,7 +232,6 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 python-multipart==0.0.6
 scipy==1.11.4
-librosa==0.9.2
 soundfile==0.12.1
 EOF
 
