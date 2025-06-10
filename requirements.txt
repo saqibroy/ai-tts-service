@@ -5,7 +5,7 @@ torchaudio==2.1.0
 TTS==0.20.6
 pydantic==2.5.0
 python-multipart==0.0.6
+numpy==1.23.5
 scipy==1.11.4
-numpy==1.22.0
 librosa==0.10.1
 soundfile==0.12.1
