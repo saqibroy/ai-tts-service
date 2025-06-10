@@ -223,16 +223,16 @@ EOF
 # Create requirements.txt
 echo "📝 Creating requirements.txt..."
 cat > requirements.txt << 'EOF'
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+numpy==1.22.0
 torch==2.1.0
 torchaudio==2.1.0
 TTS==0.20.6
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 pydantic==2.5.0
 python-multipart==0.0.6
 scipy==1.11.4
-numpy==1.24.3
-librosa==0.10.1
+librosa==0.9.2  # CHANGED THIS LINE
 soundfile==0.12.1
 EOF
 
