@@ -1,0 +1,9 @@
+# Render.com service definition for ai-tts-service
+# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
+services:
+  - type: web
+    name: ai-tts-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health 

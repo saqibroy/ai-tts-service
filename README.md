@@ -9,7 +9,7 @@ A high-quality, AI-powered text-to-speech microservice built with FastAPI and Co
 - **⚡ Fast Generation**: Optimized model caching for quick audio generation  
 - **🎵 Speed Control**: Adjustable playback speed (0.5x to 2x)
 - **📁 Audio Download**: Download generated audio files in WAV format
-- **🚀 Free Deployment**: Runs on Railway's generous free tier
+- **🚀 Free Deployment**: Runs on Render's generous free tier
 - **🔌 Easy Integration**: Simple REST API for seamless integration
 - **📱 CORS Enabled**: Ready for web application integration
 
@@ -28,7 +28,7 @@ A high-quality, AI-powered text-to-speech microservice built with FastAPI and Co
 
 ### Option 1: Use Setup Script (Recommended)
 ```bash
-curl -O https://raw.githubusercontent.com/yourusername/ai-tts-service/main/setup.sh
+curl -O https://raw.githubusercontent.com/<yourusername>/ai-tts-service/main/setup.sh
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -36,7 +36,7 @@ chmod +x setup.sh
 ### Option 2: Manual Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ai-tts-service.git
+git clone https://github.com/<yourusername>/ai-tts-service.git
 cd ai-tts-service
 
 # Install dependencies
@@ -97,111 +97,42 @@ GET /health
 
 ## 🚀 Deployment
 
-### Deploy to Railway (Free)
+### Deploy to Render.com (Free)
 
-1. **Create Railway Account**: Go to [Railway.app](https://railway.app) and sign up
-
-2. **Deploy from GitHub**:
+1. **Create a Render Account**: Go to [Render.com](https://render.com) and sign up.
+2. **Push Your Code to GitHub**:
    ```bash
-   # Push your code to GitHub
-   git remote add origin https://github.com/yourusername/ai-tts-service.git
+   git remote add origin https://github.com/<yourusername>/ai-tts-service.git
+   git branch -M main
    git push -u origin main
-   
-   # Deploy on Railway
-   # - Create new project
-   # - Connect GitHub repository  
-   # - Railway auto-deploys
    ```
+3. **Deploy on Render**:
+   - Go to the Render Dashboard
+   - Click "New Web Service"
+   - Connect your GitHub repository
+   - Render will auto-detect the `render.yaml` file and deploy your service
+4. **Get Service URL**: Render provides a URL like `https://your-service-name.onrender.com`
 
-3. **Get Service URL**: Railway provides a URL like `https://your-service.railway.app`
-
-### Alternative Platforms
-
-<details>
-<summary>Deploy to Render.com</summary>
-
+#### `render.yaml` Example
 ```yaml
-# render.yaml
+# Render.com service definition for ai-tts-service
+# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
 services:
   - type: web
     name: ai-tts-service
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
 ```
-</details>
-
-<details>
-<summary>Deploy to Fly.io</summary>
-
-```bash
-# Install flyctl
-curl -L https://fly.io/install.sh | sh
-
-# Deploy
-fly launch
-fly deploy
-```
-</details>
-
-## 🔧 Integration with Next.js
-
-### 1. Environment Variables
-Add to your `.env.local`:
-```env
-NEXT_PUBLIC_TTS_SERVICE_URL=https://your-service.railway.app
-```
-
-### 2. Update Your Component
-Replace your existing `AudioSummaryPlayer` with the provided updated version that includes:
-- AI voice selection dropdown
-- Audio download functionality
-- Real-time progress tracking
-- Better error handling
-
-### 3. Example Usage
-```typescript
-// In your React component
-const generateAudio = async (text: string, voice: string = 'female_calm') => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_TTS_SERVICE_URL}/generate-speech`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, voice, speed: 1.0 })
-  });
-  
-  if (response.ok) {
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-    // Play or download the audio
-  }
-};
-```
-
-## 🎛️ Configuration
-
-### Model Configuration
-Modify `available_voices` in `main.py` to add custom voices:
-
-```python
-"custom_voice": {
-    "model": "tts_models/en/vctk/vits",
-    "speaker": "p243",
-    "description": "Custom voice description"
-}
-```
-
-### Performance Tuning
-- **Memory**: Models are cached in memory for faster generation
-- **GPU Support**: Automatically uses GPU if available (upgrade Railway plan)
-- **Concurrent Requests**: Handles multiple requests efficiently
 
 ## 📊 Usage Limits
 
-### Railway Free Tier
-- ✅ 500 hours/month execution time
-- ✅ $5 monthly credit
-- ✅ 1GB RAM, 1 vCPU
-- ⚠️ Sleeps after 1 hour inactivity
+### Render Free Tier
+- ✅ 750 hours/month execution time
+- ✅ 100 GB/month bandwidth
+- ✅ 512 MB RAM, 0.5 vCPU
+- ⚠️ Spins down after 15 minutes of inactivity (cold start ~30s)
 
 ### Service Limits
 - Max text length: 5,000 characters
@@ -211,26 +142,26 @@ Modify `available_voices` in `main.py` to add custom voices:
 ## 🔧 Monitoring & Maintenance
 
 ### Keep Service Awake
-Add to your Next.js app to prevent sleeping:
+Add to your Next.js app to prevent sleeping (ping every 10-14 minutes):
 
 ```javascript
-// Ping every 25 minutes
+// Ping every 12 minutes
 setInterval(async () => {
   try {
     await fetch(`${process.env.NEXT_PUBLIC_TTS_SERVICE_URL}/health`);
   } catch (error) {
     console.log('Keep-alive ping failed');
   }
-}, 25 * 60 * 1000);
+}, 12 * 60 * 1000);
 ```
 
 ### Monitoring
 ```bash
 # Check service health
-curl https://your-service.railway.app/health
+curl https://your-service-name.onrender.com/health
 
-# View logs (Railway CLI)
-railway logs --tail
+# View logs
+# Go to the Render Dashboard > your service > Logs
 ```
 
 ## 🛠️ Development
@@ -270,7 +201,7 @@ curl -X POST http://localhost:8000/generate-speech \
 **Service won't start**
 - Check Python version (3.10 required)
 - Verify all dependencies in requirements.txt
-- Check Railway logs for errors
+- Check Render logs for errors
 
 **Audio generation fails**
 - Ensure text is under 5,000 characters
@@ -310,12 +241,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Coqui TTS](https://github.com/coqui-ai/TTS) - Excellent open-source TTS library
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
-- [Railway](https://railway.app/) - Fantastic deployment platform
+- [Render](https://render.com/) - Fantastic deployment platform
 
 ## 📞 Support
 
-- Create an [issue](https://github.com/yourusername/ai-tts-service/issues) for bugs
-- Check [discussions](https://github.com/yourusername/ai-tts-service/discussions) for questions
+- Create an [issue](https://github.com/<yourusername>/ai-tts-service/issues) for bugs
+- Check [discussions](https://github.com/<yourusername>/ai-tts-service/discussions) for questions
 - Star ⭐ the repo if you find it useful!
 
 ---

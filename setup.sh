@@ -280,20 +280,18 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
 
-# Create railway.json
-echo "📝 Creating railway.json..."
-cat > railway.json << 'EOF'
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "NIXPACKS"
-  },
-  "deploy": {
-    "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  }
-}
+# Create render.yaml
+echo "📝 Creating render.yaml..."
+cat > render.yaml << 'EOF'
+# Render.com service definition for ai-tts-service
+# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
+services:
+  - type: web
+    name: ai-tts-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
 EOF
 
 # Create .gitignore
@@ -349,13 +347,13 @@ echo "   git remote add origin https://github.com/yourusername/ai-tts-service.gi
 echo "   git branch -M main"
 echo "   git push -u origin main"
 echo ""
-echo "2. Deploy to Railway:"
-echo "   - Go to https://railway.app"
+echo "2. Deploy to Render.com:"
+echo "   - Go to https://render.com"
 echo "   - Create new project from GitHub repo"
-echo "   - Railway will automatically deploy"
+echo "   - Render will automatically deploy"
 echo ""
 echo "3. Update your Next.js app:"
-echo "   - Add NEXT_PUBLIC_TTS_SERVICE_URL=https://your-service.railway.app to .env.local"
+echo "   - Add NEXT_PUBLIC_TTS_SERVICE_URL=https://your-service.render.com to .env.local"
 echo "   - Replace your AudioSummaryPlayer component"
 echo ""
 echo "4. Test locally (optional):"
