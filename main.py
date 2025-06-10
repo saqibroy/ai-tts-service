@@ -9,6 +9,8 @@ import tempfile
 from TTS.api import TTS
 import logging
 from typing import Optional
+import gc
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,132 +18,134 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI TTS Microservice", version="1.0.0")
 
+# More permissive CORS for debugging
 origins = [
-    "http://localhost:3000",  # Your Next.js local development server
-    "https://ssohail.com",    # Your Next.js production domain
-    # Add any other domains that need to access your API
+    "*",  # Allow all origins for now - restrict in production
 ]
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Configure this properly in production
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 class TTSRequest(BaseModel):
     text: str
-    voice: Optional[str] = "en_speaker_0"
+    voice: Optional[str] = "female_calm"
     speed: Optional[float] = 1.0
-    model: Optional[str] = "tts_models/en/ljspeech/tacotron2-DDC"
 
 class TTSService:
     def __init__(self):
         self.models = {}
+        self.model_lock = threading.Lock()
+        # Reduced voice options for better memory management
         self.available_voices = {
             "female_calm": {
                 "model": "tts_models/en/ljspeech/tacotron2-DDC",
                 "speaker": None,
                 "description": "Female, calm and clear"
             },
-            "female_expressive": {
-                "model": "tts_models/en/vctk/vits",
-                "speaker": "p225",  # Female speaker
-                "description": "Female, expressive"
-            },
-            "male_deep": {
-                "model": "tts_models/en/vctk/vits",
-                "speaker": "p226",  # Male speaker
-                "description": "Male, deep voice"
-            },
-            "female_young": {
-                "model": "tts_models/en/vctk/vits",
-                "speaker": "p231",  # Young female
-                "description": "Female, young and energetic"
-            },
-            "male_british": {
-                "model": "tts_models/en/vctk/vits",
-                "speaker": "p237",  # British male
-                "description": "Male, British accent"
-            },
-            "female_american": {
-                "model": "tts_models/en/vctk/vits",
-                "speaker": "p232",  # American female
-                "description": "Female, American accent"
+            "female_fast": {
+                "model": "tts_models/en/ljspeech/fast_pitch",
+                "speaker": None,
+                "description": "Female, faster generation"
             }
         }
         
     def get_model(self, model_name: str):
-        """Load and cache TTS model"""
-        if model_name not in self.models:
-            try:
-                logger.info(f"Loading model: {model_name}")
-                # Use GPU if available, otherwise CPU
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-                self.models[model_name] = TTS(model_name).to(device)
-                logger.info(f"Model loaded successfully on {device}")
-            except Exception as e:
-                logger.error(f"Failed to load model {model_name}: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Failed to load TTS model: {str(e)}")
-        
-        return self.models[model_name]
+        """Load and cache TTS model with memory management"""
+        with self.model_lock:
+            if model_name not in self.models:
+                try:
+                    logger.info(f"Loading model: {model_name}")
+                    
+                    # Clear any existing models to free memory
+                    if len(self.models) > 0:
+                        logger.info("Clearing existing models to free memory")
+                        for old_model in self.models.values():
+                            del old_model
+                        self.models.clear()
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                    
+                    # Use CPU for better stability on free tier
+                    device = "cpu"  # Force CPU to avoid GPU memory issues
+                    self.models[model_name] = TTS(model_name).to(device)
+                    logger.info(f"Model loaded successfully on {device}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to load model {model_name}: {str(e)}")
+                    raise HTTPException(status_code=500, detail=f"Failed to load TTS model: {str(e)}")
+            
+            return self.models[model_name]
     
     def generate_speech(self, text: str, voice: str = "female_calm", speed: float = 1.0) -> bytes:
-        """Generate speech from text"""
-        if voice not in self.available_voices:
-            voice = "female_calm"  # Default fallback
-            
-        voice_config = self.available_voices[voice]
-        model = self.get_model(voice_config["model"])
-        
+        """Generate speech from text with error handling"""
         try:
+            # Limit text length for memory management
+            if len(text) > 1000:  # Reduced from 5000
+                text = text[:1000]
+                logger.warning("Text truncated to 1000 characters")
+            
+            if voice not in self.available_voices:
+                voice = "female_calm"  # Default fallback
+                
+            voice_config = self.available_voices[voice]
+            model = self.get_model(voice_config["model"])
+            
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
-                # Generate speech
-                if voice_config["speaker"]:
-                    # For multi-speaker models
+                try:
+                    # Generate speech with simple parameters
                     model.tts_to_file(
                         text=text,
-                        speaker=voice_config["speaker"],
-                        file_path=tmp_file.name,
-                        speed=speed
+                        file_path=tmp_file.name
                     )
-                else:
-                    # For single speaker models
-                    model.tts_to_file(
-                        text=text,
-                        file_path=tmp_file.name,
-                        speed=speed
-                    )
-                
-                # Read the generated audio file
-                with open(tmp_file.name, 'rb') as audio_file:
-                    audio_data = audio_file.read()
-                
-                # Clean up temp file
-                os.unlink(tmp_file.name)
-                
-                return audio_data
-                
+                    
+                    # Read the generated audio file
+                    with open(tmp_file.name, 'rb') as audio_file:
+                        audio_data = audio_file.read()
+                    
+                    logger.info(f"Successfully generated {len(audio_data)} bytes of audio")
+                    return audio_data
+                    
+                finally:
+                    # Clean up temp file
+                    try:
+                        os.unlink(tmp_file.name)
+                    except:
+                        pass
+                        
         except Exception as e:
             logger.error(f"Speech generation failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Speech generation failed: {str(e)}")
 
 # Initialize TTS service
-tts_service = TTSService()
+try:
+    tts_service = TTSService()
+    logger.info("TTS Service initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize TTS service: {e}")
+    tts_service = None
 
 @app.get("/")
 async def root():
     return {
         "message": "AI TTS Microservice",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "service_ready": tts_service is not None
     }
 
 @app.get("/voices")
 async def get_available_voices():
     """Get list of available voices"""
+    if not tts_service:
+        raise HTTPException(status_code=503, detail="TTS service not ready")
+    
     return {
         "voices": tts_service.available_voices,
         "default": "female_calm"
@@ -150,19 +154,24 @@ async def get_available_voices():
 @app.post("/generate-speech")
 async def generate_speech(request: TTSRequest):
     """Generate speech from text"""
+    if not tts_service:
+        raise HTTPException(status_code=503, detail="TTS service not ready")
+    
     try:
-        # Validate text length
-        if len(request.text) > 5000:
-            raise HTTPException(status_code=400, detail="Text too long. Maximum 5000 characters.")
-        
-        if not request.text.strip():
+        # Validate text
+        if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty.")
+        
+        if len(request.text) > 1000:  # Reduced limit
+            logger.warning("Text too long, truncating...")
+        
+        logger.info(f"Processing TTS request: {len(request.text)} characters")
         
         # Generate speech
         audio_data = tts_service.generate_speech(
-            text=request.text,
-            voice=request.voice,
-            speed=request.speed
+            text=request.text.strip(),
+            voice=request.voice or "female_calm",
+            speed=request.speed or 1.0
         )
         
         # Return audio as streaming response
@@ -171,31 +180,53 @@ async def generate_speech(request: TTSRequest):
             media_type="audio/wav",
             headers={
                 "Content-Disposition": "attachment; filename=speech.wav",
-                "Content-Length": str(len(audio_data))
+                "Content-Length": str(len(audio_data)),
+                "Access-Control-Allow-Origin": "*",  # Explicit CORS header
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*"
             }
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in generate_speech: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
-        # Simple health check - try to load a model
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        models_loaded = len(tts_service.models) if tts_service else 0
+        
         return {
-            "status": "healthy",
+            "status": "healthy" if tts_service else "service_not_ready",
             "device": device,
-            "models_loaded": len(tts_service.models)
+            "models_loaded": models_loaded,
+            "memory_info": {
+                "available": True,
+                "torch_cuda_available": torch.cuda.is_available()
+            }
         }
     except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+
+# Handle preflight requests
+@app.options("/generate-speech")
+async def options_generate_speech():
+    return {
+        "message": "CORS preflight",
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
+    }
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
+    logger.info(f"Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
