@@ -18,3 +18,7 @@ services:
         value: "1"
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: "/etc/secrets/google-credentials.json"
+    # Mount secrets
+    secretFiles:
+      - key: google-credentials.json
+        path: /etc/secrets/google-credentials.json

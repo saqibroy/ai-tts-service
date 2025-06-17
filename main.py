@@ -11,6 +11,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import psutil
 from google.cloud import texttospeech
+from google.auth.exceptions import DefaultCredentialsError
 
 # Configure logging
 logging.basicConfig(
@@ -27,17 +28,47 @@ def get_memory_usage():
     process = psutil.Process(os.getpid())
     return process.memory_info().rss / 1024 / 1024
 
+def verify_google_credentials():
+    """Verify Google Cloud credentials are properly configured"""
+    credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if not credentials_path:
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set")
+    
+    if not os.path.exists(credentials_path):
+        raise ValueError(f"Credentials file not found at {credentials_path}")
+    
+    if not os.access(credentials_path, os.R_OK):
+        raise ValueError(f"Credentials file at {credentials_path} is not readable")
+    
+    logger.info(f"Found credentials file at {credentials_path}")
+    return True
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     global tts_service
     try:
         logger.info(f"Starting up - Memory usage: {get_memory_usage():.1f}MB")
+        
+        # Verify credentials before initializing service
+        verify_google_credentials()
+        
         tts_service = TTSService()
         logger.info(f"TTS Service initialized - Memory usage: {get_memory_usage():.1f}MB")
-    except Exception as e:
-        logger.error(f"Failed to initialize TTS service: {e}")
+    except ValueError as e:
+        logger.error(f"Credentials error: {str(e)}")
         tts_service = None
+        raise HTTPException(
+            status_code=500,
+            detail=f"Google Cloud credentials error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize TTS service: {str(e)}")
+        tts_service = None
+        raise HTTPException(
+            status_code=500,
+            detail=f"Service initialization failed: {str(e)}"
+        )
     
     yield
     

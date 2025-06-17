@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Create directory for credentials
+RUN mkdir -p /etc/secrets && chmod 755 /etc/secrets
+
 # Expose port
 EXPOSE 8000
 
