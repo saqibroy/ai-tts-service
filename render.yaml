@@ -1,35 +1,20 @@
 services:
   - type: web
-    name: ai-tts-service
+    name: google-cloud-tts-service
     env: python
     plan: free
     # Simplified build command
     buildCommand: |
       pip install --no-cache-dir --upgrade pip setuptools wheel &&
       pip install --no-cache-dir -r requirements.txt
-    # Optimized start command with memory limits
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120 --timeout-graceful-shutdown 120 --limit-concurrency 10 --backlog 2048"
+    # Simplified start command
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
-    # Memory optimization environment variables
+    # Environment variables
     envVars:
       - key: PYTHONDONTWRITEBYTECODE
         value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"
-      # Aggressive memory management for PyTorch
-      - key: PYTORCH_CUDA_ALLOC_CONF
-        value: "max_split_size_mb:128"
-      - key: OMP_NUM_THREADS
-        value: "1"
-      - key: MKL_NUM_THREADS
-        value: "1"
-      - key: NUMBA_CACHE_DIR
-        value: "/tmp/numba_cache"
-      # Python memory optimization
-      - key: PYTHONMALLOC
-        value: "malloc"
-      - key: MALLOC_TRIM_THRESHOLD_
-        value: "100000"
-      # Disable unnecessary features
-      - key: TOKENIZERS_PARALLELISM
-        value: "false"
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: "/etc/secrets/google-credentials.json"

@@ -1,13 +1,14 @@
-# 🎙️ AI Text-to-Speech Microservice
+# 🎙️ Google Cloud Text-to-Speech Microservice
 
-A high-quality, AI-powered text-to-speech microservice built with FastAPI and Coqui TTS, designed to replace browser-based TTS with professional neural voices.
+A high-quality text-to-speech microservice built with FastAPI and Google Cloud Text-to-Speech API, designed to provide professional neural voices with minimal resource usage.
 
 ## 🌟 Features
 
-- **🤖 Multiple AI Voices**: 6 different neural TTS voices with unique characteristics
-- **🎛️ Voice Customization**: Female/male voices with different accents and styles
-- **⚡ Fast Generation**: Optimized model caching for quick audio generation  
-- **🎵 Speed Control**: Adjustable playback speed (0.5x to 2x)
+- **🤖 High-Quality Voices**: Multiple neural voices from Google Cloud TTS
+- **🎛️ Voice Customization**: Adjustable speed and pitch
+- **⚡ Fast Generation**: Cloud-based processing for quick audio generation
+- **🎵 Speed Control**: Adjustable playback speed (0.25x to 4.0x)
+- **🎯 Pitch Control**: Adjustable pitch (-20.0 to 20.0)
 - **📁 Audio Download**: Download generated audio files in WAV format
 - **🚀 Free Deployment**: Runs on Render's generous free tier
 - **🔌 Easy Integration**: Simple REST API for seamless integration
@@ -15,20 +16,18 @@ A high-quality, AI-powered text-to-speech microservice built with FastAPI and Co
 
 ## 🎭 Available Voices
 
-| Voice ID | Description | Gender | Style |
+| Voice ID | Description | Gender | Type |
 |----------|-------------|---------|-------|
-| `female_calm` | Female, calm and clear | Female | Professional |
-| `female_expressive` | Female, expressive | Female | Dynamic |
-| `male_deep` | Male, deep voice | Male | Authoritative |
-| `female_young` | Female, young and energetic | Female | Energetic |
-| `male_british` | Male, British accent | Male | Sophisticated |
-| `female_american` | Female, American accent | Female | Friendly |
+| `en-US-Standard-C` | Standard female voice | Female | Standard |
+| `en-US-Wavenet-A` | WaveNet male voice | Male | WaveNet |
+| `en-US-Neural2-C` | Neural2 female voice | Female | Neural2 |
+| `en-GB-Standard-B` | British male voice | Male | Standard |
 
 ## 🚀 Quick Start
 
 ### Option 1: Use Setup Script (Recommended)
 ```bash
-curl -O https://raw.githubusercontent.com/<yourusername>/ai-tts-service/main/setup.sh
+curl -O https://raw.githubusercontent.com/<yourusername>/google-cloud-tts-service/main/setup.sh
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -36,11 +35,14 @@ chmod +x setup.sh
 ### Option 2: Manual Setup
 ```bash
 # Clone the repository
-git clone https://github.com/<yourusername>/ai-tts-service.git
-cd ai-tts-service
+git clone https://github.com/<yourusername>/google-cloud-tts-service.git
+cd google-cloud-tts-service
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set up Google Cloud credentials
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/credentials.json"
 
 # Run locally
 uvicorn main:app --reload
@@ -56,14 +58,15 @@ GET /voices
 **Response:**
 ```json
 {
-  "voices": {
-    "female_calm": {
-      "model": "tts_models/en/ljspeech/tacotron2-DDC",
-      "speaker": null,
-      "description": "Female, calm and clear"
+  "voices": [
+    {
+      "id": "en-US-Standard-C",
+      "language_code": "en-US",
+      "name": "en-US-Standard-C",
+      "gender": "FEMALE",
+      "description": "Standard female voice"
     }
-  },
-  "default": "female_calm"
+  ]
 }
 ```
 
@@ -73,9 +76,10 @@ POST /generate-speech
 Content-Type: application/json
 
 {
-  "text": "Hello, this is a test of the AI text-to-speech service!",
-  "voice": "female_calm",
-  "speed": 1.0
+  "text": "Hello, this is a test of the text-to-speech service!",
+  "voice": "en-US-Standard-C",
+  "speed": 1.0,
+  "pitch": 0.0
 }
 ```
 
@@ -90,8 +94,8 @@ GET /health
 ```json
 {
   "status": "healthy",
-  "device": "cpu",
-  "models_loaded": 2
+  "message": "Google Cloud TTS service is running",
+  "memory_usage_mb": 45.2
 }
 ```
 
@@ -102,7 +106,7 @@ GET /health
 1. **Create a Render Account**: Go to [Render.com](https://render.com) and sign up.
 2. **Push Your Code to GitHub**:
    ```bash
-   git remote add origin https://github.com/<yourusername>/ai-tts-service.git
+   git remote add origin https://github.com/<yourusername>/google-cloud-tts-service.git
    git branch -M main
    git push -u origin main
    ```
@@ -110,20 +114,22 @@ GET /health
    - Go to the Render Dashboard
    - Click "New Web Service"
    - Connect your GitHub repository
+   - Upload your Google Cloud credentials as a secret file named `google-credentials.json`
    - Render will auto-detect the `render.yaml` file and deploy your service
 4. **Get Service URL**: Render provides a URL like `https://your-service-name.onrender.com`
 
 #### `render.yaml` Example
 ```yaml
-# Render.com service definition for ai-tts-service
-# NOTE: Free instance type spins down after 15 minutes of inactivity. Upgrade for always-on service.
 services:
   - type: web
-    name: ai-tts-service
+    name: google-cloud-tts-service
     env: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
+    envVars:
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: "/etc/secrets/google-credentials.json"
 ```
 
 ## 📊 Usage Limits
@@ -134,10 +140,15 @@ services:
 - ✅ 512 MB RAM, 0.5 vCPU
 - ⚠️ Spins down after 15 minutes of inactivity (cold start ~30s)
 
+### Google Cloud TTS Free Tier
+- ✅ 4 million characters per month
+- ✅ Multiple voice types (Standard, WaveNet, Neural2)
+- ✅ High-quality audio output
+
 ### Service Limits
-- Max text length: 5,000 characters
+- Max text length: 500 characters per request
 - Audio format: WAV (high quality)
-- Response time: 2-10 seconds (first request may be slower)
+- Response time: 1-3 seconds
 
 ## 🔧 Monitoring & Maintenance
 
@@ -171,6 +182,9 @@ curl https://your-service-name.onrender.com/health
 # Install dependencies
 pip install -r requirements.txt
 
+# Set up Google Cloud credentials
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/credentials.json"
+
 # Run with hot reload
 uvicorn main:app --reload --port 8000
 
@@ -183,7 +197,7 @@ curl http://localhost:8000/voices
 # Test voice generation
 curl -X POST http://localhost:8000/generate-speech \
   -H "Content-Type: application/json" \
-  -d '{"text":"Hello world","voice":"female_calm"}' \
+  -d '{"text":"Hello world","voice":"en-US-Standard-C"}' \
   --output test.wav
 ```
 
@@ -193,6 +207,7 @@ curl -X POST http://localhost:8000/generate-speech \
 - **CORS**: Configure CORS origins for your specific domains
 - **Input Validation**: Text length and content validation included
 - **API Authentication**: Add API keys for production use
+- **Google Cloud Credentials**: Keep your credentials secure and never commit them to version control
 
 ## 🐛 Troubleshooting
 
@@ -202,16 +217,12 @@ curl -X POST http://localhost:8000/generate-speech \
 - Check Python version (3.10 required)
 - Verify all dependencies in requirements.txt
 - Check Render logs for errors
+- Ensure Google Cloud credentials are properly configured
 
 **Audio generation fails**
-- Ensure text is under 5,000 characters
-- Check if service has enough memory
+- Ensure text is under 500 characters
+- Check if Google Cloud credentials are valid
 - Verify voice parameter is valid
-
-**Long response times**
-- First request loads models (30-60 seconds)
-- Subsequent requests are much faster
-- Consider upgrading to keep service warm
 
 **CORS errors**
 - Update allowed origins in main.py
@@ -219,11 +230,10 @@ curl -X POST http://localhost:8000/generate-speech \
 
 ## 📈 Performance
 
-- **First Request**: 30-60 seconds (model loading)
-- **Subsequent Requests**: 2-5 seconds
-- **Audio Quality**: 22kHz, 16-bit WAV
-- **Model Size**: ~100-500MB per model
-- **Memory Usage**: ~1-2GB with cached models
+- **Response Time**: 1-3 seconds
+- **Audio Quality**: High-quality WAV
+- **Memory Usage**: ~50MB (much lower than local TTS)
+- **Scalability**: Cloud-based processing
 
 ## 🤝 Contributing
 
@@ -239,14 +249,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Coqui TTS](https://github.com/coqui-ai/TTS) - Excellent open-source TTS library
+- [Google Cloud Text-to-Speech](https://cloud.google.com/text-to-speech) - High-quality TTS service
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 - [Render](https://render.com/) - Fantastic deployment platform
 
 ## 📞 Support
 
-- Create an [issue](https://github.com/<yourusername>/ai-tts-service/issues) for bugs
-- Check [discussions](https://github.com/<yourusername>/ai-tts-service/discussions) for questions
+- Create an [issue](https://github.com/<yourusername>/google-cloud-tts-service/issues) for bugs
+- Check [discussions](https://github.com/<yourusername>/google-cloud-tts-service/discussions) for questions
 - Star ⭐ the repo if you find it useful!
 
 ---

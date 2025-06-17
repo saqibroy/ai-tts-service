@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "🚀 AI TTS Microservice Setup Script"
-echo "=================================="
+echo "🚀 Google Cloud TTS Microservice Setup Script"
+echo "==========================================="
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
@@ -17,8 +17,8 @@ fi
 
 # Create project directory
 echo "📁 Creating project directory..."
-mkdir -p ai-tts-service
-cd ai-tts-service
+mkdir -p google-cloud-tts-service
+cd google-cloud-tts-service
 
 # Create requirements.txt
 echo "📝 Creating requirements.txt..."
@@ -28,57 +28,30 @@ fastapi
 uvicorn[standard]
 pydantic
 
-# Essential TTS dependencies
-TTS
+# Google Cloud TTS
+google-cloud-texttospeech
 
 # Minimal required dependencies
 numpy
 torch
 torchaudio
 
-# Audio processing
-soundfile
-librosa
-
 # System monitoring
 psutil
-
-# Essential text processing
-inflect
-pyyaml
 EOF
 
 # Create Dockerfile
 echo "📝 Creating Dockerfile..."
 cat > Dockerfile << 'EOF'
-# Use Python 3.10 specifically for TTS compatibility
+# Use Python 3.10
 FROM python:3.10-slim-bullseye
 
 # Prevent Python from writing .pyc files and ensure real-time logging
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Memory optimization for free tier deployment
-ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
-ENV OMP_NUM_THREADS=1
-ENV MKL_NUM_THREADS=1
-ENV NUMBA_CACHE_DIR=/tmp/numba_cache
-
-# Install system dependencies required for TTS and audio processing
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libssl-dev \
-    libffi-dev \
-    libsndfile1-dev \
-    ffmpeg \
-    espeak-ng \
-    espeak-ng-data \
-    libespeak-ng-dev \
-    mecab \
-    libmecab-dev \
-    mecab-ipadic-utf8 \
-    git \
-    wget \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -92,14 +65,11 @@ COPY requirements.txt .
 # Upgrade pip and install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install dependencies with verbose output for debugging
-RUN pip install --no-cache-dir --verbose -r requirements.txt
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
-
-# Create necessary directories
-RUN mkdir -p /app/tmp /tmp/numba_cache && chmod 777 /app/tmp /tmp/numba_cache
 
 # Expose port
 EXPOSE 8000
@@ -108,8 +78,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application with optimized settings
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--timeout-keep-alive", "120", "--timeout-graceful-shutdown", "120", "--limit-concurrency", "10", "--backlog", "2048"]
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
 
 # Create render.yaml
@@ -117,31 +87,24 @@ echo "📝 Creating render.yaml..."
 cat > render.yaml << 'EOF'
 services:
   - type: web
-    name: ai-tts-service
+    name: google-cloud-tts-service
     env: python
     plan: free
     # Simplified build command
     buildCommand: |
       pip install --no-cache-dir --upgrade pip setuptools wheel &&
       pip install --no-cache-dir -r requirements.txt
-    # Optimized start command with memory limits
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120 --timeout-graceful-shutdown 120 --limit-concurrency 10 --backlog 2048"
+    # Simplified start command
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
-    # Memory optimization environment variables
+    # Environment variables
     envVars:
       - key: PYTHONDONTWRITEBYTECODE
         value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"
-      # Aggressive memory management for PyTorch
-      - key: PYTORCH_CUDA_ALLOC_CONF
-        value: "max_split_size_mb:128"
-      - key: OMP_NUM_THREADS
-        value: "1"
-      - key: MKL_NUM_THREADS
-        value: "1"
-      - key: NUMBA_CACHE_DIR
-        value: "/tmp/numba_cache"
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: "/etc/secrets/google-credentials.json"
 EOF
 
 # Create .gitignore
@@ -180,26 +143,30 @@ venv.bak/
 *.wav
 *.mp3
 tmp/
+*.json
+!package.json
+!package-lock.json
 EOF
 
 # Initialize git repository
 echo "🔧 Initializing git repository..."
 git init
 git add .
-git commit -m "Initial commit - AI TTS Microservice"
+git commit -m "Initial commit - Google Cloud TTS Microservice"
 
 echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
 echo "1. Create a GitHub repository and push this code:"
-echo "   git remote add origin https://github.com/yourusername/ai-tts-service.git"
+echo "   git remote add origin https://github.com/yourusername/google-cloud-tts-service.git"
 echo "   git branch -M main"
 echo "   git push -u origin main"
 echo ""
 echo "2. Deploy to Render.com:"
 echo "   - Go to https://render.com"
 echo "   - Create new project from GitHub repo"
+echo "   - Upload your Google Cloud credentials as a secret file named 'google-credentials.json'"
 echo "   - Render will automatically deploy"
 echo ""
 echo "3. Update your Next.js app:"
@@ -208,6 +175,7 @@ echo "   - Replace your AudioSummaryPlayer component"
 echo ""
 echo "4. Test locally (optional):"
 echo "   pip install -r requirements.txt"
+echo "   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json"
 echo "   uvicorn main:app --reload"
 echo ""
-echo "🎉 Your AI TTS microservice is ready for deployment!"
+echo "🎉 Your Google Cloud TTS microservice is ready for deployment!"

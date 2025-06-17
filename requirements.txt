@@ -3,30 +3,20 @@ fastapi
 uvicorn[standard]
 pydantic
 
-# Essential TTS dependencies
-TTS
+# Google Cloud TTS
+google-cloud-texttospeech
 
 # Minimal required dependencies
 numpy
 torch
 torchaudio
 
-# Audio processing
-soundfile
-librosa
-
 # System monitoring
 psutil
 
-# Essential text processing
-inflect
-pyyaml
-
 # Remove heavy dependencies that aren't essential:
-# - scipy (not critical for basic TTS)
-# - matplotlib (not needed for API)
-# - pandas (not needed for API)
-# - mecab-python3 (only needed for Japanese)
-# - jieba (only needed for Chinese)
-# - bangla dependencies (only needed for Bangla)
-# - numba (heavy compilation, not essential)
+# - TTS (replaced with Google Cloud TTS)
+# - soundfile (not needed with Google Cloud TTS)
+# - librosa (not needed with Google Cloud TTS)
+# - inflect (not needed with Google Cloud TTS)
+# - pyyaml (not needed with Google Cloud TTS)
