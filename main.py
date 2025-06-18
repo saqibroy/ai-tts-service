@@ -84,17 +84,20 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
+# CORS configuration - Updated to match frontend requirements
 origins = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "https://ssohail.com",
     "https://www.ssohail.com",
+    "https://your-domain.com",  # Add your production domain
+    "https://www.your-domain.com"  # Add your production domain with www
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True, #Crucial: Allow credentials
+    allow_credentials=True, # Crucial: Allow credentials
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["Content-Length", "Content-Type", "Content-Disposition"],
@@ -111,7 +114,7 @@ class TTSService:
     def __init__(self):
         self.client = texttospeech.TextToSpeechClient()
         
-        # Define available voices with their properties
+        # Define available voices with their properties - Updated to match frontend expectations
         self.available_voices = {
             "en-US-Standard-C": {
                 "language_code": "en-US",
@@ -119,23 +122,30 @@ class TTSService:
                 "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE,
                 "description": "Standard female voice"
             },
-            "en-US-Wavenet-A": {
-                "language_code": "en-US",
-                "name": "en-US-Wavenet-A",
-                "ssml_gender": texttospeech.SsmlVoiceGender.MALE,
-                "description": "WaveNet male voice"
-            },
-            "en-US-Neural2-C": {
-                "language_code": "en-US",
-                "name": "en-US-Neural2-C",
-                "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE,
-                "description": "Neural2 female voice"
-            },
             "en-GB-Standard-B": {
                 "language_code": "en-GB",
                 "name": "en-GB-Standard-B",
                 "ssml_gender": texttospeech.SsmlVoiceGender.MALE,
                 "description": "British male voice"
+            },
+            # Additional voices for better variety
+            "en-US-Wavenet-D": {
+                "language_code": "en-US",
+                "name": "en-US-Wavenet-D",
+                "ssml_gender": texttospeech.SsmlVoiceGender.MALE,
+                "description": "WaveNet male voice (deep)"
+            },
+            "en-GB-Standard-A": {
+                "language_code": "en-GB",
+                "name": "en-GB-Standard-A",
+                "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE,
+                "description": "British female voice"
+            },
+            "en-AU-Standard-A": {
+                "language_code": "en-AU",
+                "name": "en-AU-Standard-A",
+                "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE,
+                "description": "Australian female voice"
             }
         }
         
@@ -150,8 +160,8 @@ class TTSService:
             if not text or not text.strip():
                 raise HTTPException(status_code=400, detail="Text cannot be empty")
             
-            # Strict text length limit for free tier
-            max_length = 500
+            # Text length limit - increased for better summaries
+            max_length = 1000  # Increased from 500 to handle longer summaries
             if len(text) > max_length:
                 text = text[:max_length]
                 logger.warning(f"Text truncated to {max_length} characters")
@@ -180,9 +190,9 @@ class TTSService:
                 ssml_gender=voice_config["ssml_gender"]
             )
             
-            # Select the type of audio file
+            # Select the type of audio file - Changed to MP3 for better compression and compatibility
             audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                audio_encoding=texttospeech.AudioEncoding.MP3,  # Changed from LINEAR16 to MP3
                 speaking_rate=speed,
                 pitch=pitch
             )
@@ -223,11 +233,15 @@ class TTSService:
 
 @app.get("/")
 async def root():
-    return {"message": "Google Cloud TTS Microservice is running"}
+    return {
+        "message": "Google Cloud TTS Microservice is running",
+        "version": "1.0.0",
+        "status": "healthy" if tts_service else "unhealthy"
+    }
 
 @app.get("/voices")
 async def get_available_voices():
-    """Get list of available voices"""
+    """Get list of available voices - Updated to match frontend expectations"""
     if not tts_service:
         raise HTTPException(status_code=503, detail="TTS service not initialized")
     
@@ -237,7 +251,7 @@ async def get_available_voices():
             "id": voice_id,
             "language_code": config["language_code"],
             "name": config["name"],
-            "gender": str(config["ssml_gender"]),
+            "gender": config["ssml_gender"].name,  # Convert enum to string
             "description": config["description"]
         })
     
@@ -260,11 +274,14 @@ async def generate_speech(request: TTSRequest, background_tasks: BackgroundTasks
         # Add cleanup task
         background_tasks.add_task(gc.collect)
         
+        # Updated to return MP3 instead of WAV
         return StreamingResponse(
             io.BytesIO(audio_data),
-            media_type="audio/wav",
+            media_type="audio/mpeg",  # Changed from audio/wav to audio/mpeg
             headers={
-                "Content-Disposition": "attachment; filename=speech.wav"
+                "Content-Disposition": "attachment; filename=speech.mp3",  # Changed extension
+                "Content-Length": str(len(audio_data)),
+                "Cache-Control": "no-cache"  # Prevent caching issues
             }
         )
     except HTTPException:
@@ -280,13 +297,16 @@ async def health_check():
         return {
             "status": "unhealthy",
             "message": "TTS service not initialized",
-            "memory_usage_mb": get_memory_usage()
+            "memory_usage_mb": get_memory_usage(),
+            "service_available": False
         }
     
     return {
         "status": "healthy",
         "message": "Google Cloud TTS service is running",
-        "memory_usage_mb": get_memory_usage()
+        "memory_usage_mb": get_memory_usage(),
+        "service_available": True,
+        "available_voices": len(tts_service.available_voices)
     }
 
 @app.get("/memory")
@@ -316,10 +336,12 @@ async def options_generate_speech():
 
 @app.exception_handler(500)
 async def internal_server_error_handler(request, exc):
+    logger.error(f"Internal server error: {str(exc)}")
     return {"detail": str(exc)}
 
 @app.exception_handler(503)
 async def service_unavailable_handler(request, exc):
+    logger.error(f"Service unavailable: {str(exc)}")
     return {"detail": str(exc)}
 
 if __name__ == "__main__":
