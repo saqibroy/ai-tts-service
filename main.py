@@ -78,10 +78,10 @@ async def lifespan(app: FastAPI):
         tts_service.cleanup()
 
 app = FastAPI(
-    title="Google Cloud TTS Microservice",
-    version="1.0.0",
-    description="Memory-optimized Text-to-Speech microservice using Google Cloud TTS",
-    lifespan=lifespan
+        title="Google Cloud TTS Microservice",
+        version="1.0.0",
+        description="Memory-optimized Text-to-Speech microservice using Google Cloud TTS",
+        lifespan=lifespan
 )
 
 # CORS configuration
@@ -89,13 +89,12 @@ origins = [
     "http://localhost:3000",
     "https://ssohail.com",
     "https://www.ssohail.com",
-    "*"  # Allow all for development
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=True, #Crucial:  Allow credentials
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["Content-Length", "Content-Type", "Content-Disposition"],
@@ -213,125 +212,128 @@ class TTSService:
                 status_code=500,
                 detail=f"Speech generation failed: {str(e)}"
             )
-    
-    def cleanup(self):
-        """Cleanup resources"""
-        try:
-            gc.collect()
-            logger.info("TTS Service cleaned up successfully")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
-
-@app.get("/")
-async def root():
-    return {"message": "Google Cloud TTS Microservice is running"}
-
-@app.get("/voices")
-async def get_available_voices():
-    """Get list of available voices"""
-    if not tts_service:
-        raise HTTPException(status_code=503, detail="TTS service not initialized")
-    
-    voices = []
-    for voice_id, config in tts_service.available_voices.items():
-        voices.append({
-            "id": voice_id,
-            "language_code": config["language_code"],
-            "name": config["name"],
-            "gender": str(config["ssml_gender"]),
-            "description": config["description"]
-        })
-    
-    return {"voices": voices}
-
-@app.post("/generate-speech")
-async def generate_speech(request: TTSRequest, background_tasks: BackgroundTasks):
-    """Generate speech from text"""
-    if not tts_service:
-        raise HTTPException(status_code=503, detail="TTS service not initialized")
-    
-    try:
-        audio_data = tts_service.generate_speech(
-            text=request.text,
-            voice=request.voice,
-            speed=request.speed,
-            pitch=request.pitch
-        )
         
-        # Add cleanup task
-        background_tasks.add_task(gc.collect)
+        def cleanup(self):
+            \"\"\"Cleanup resources\"\"\"
+            try:
+                gc.collect()
+                logger.info("TTS Service cleaned up successfully")
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")
+
+        @app.get("/")
+        async def root():
+            return {"message": "Google Cloud TTS Microservice is running"}
         
-        return StreamingResponse(
-            io.BytesIO(audio_data),
-            media_type="audio/wav",
-            headers={
-                "Content-Disposition": "attachment; filename=speech.wav"
+        @app.get("/voices")
+        async def get_available_voices():
+            \"\"\"Get list of available voices\"\"\"
+            if not tts_service:
+                raise HTTPException(status_code=503, detail="TTS service not initialized")
+            
+            voices = []
+            for voice_id, config in tts_service.available_voices.items():
+                voices.append({
+                    "id": voice_id,
+                    "language_code": config["language_code"],
+                    "name": config["name"],
+                    "gender": str(config["ssml_gender"]),
+                    "description": config["description"]
+                })
+            
+            return {"voices": voices}
+        
+        @app.post("/generate-speech")
+        async def generate_speech(request: TTSRequest, background_tasks: BackgroundTasks):
+            """Generate speech from text"""
+            if not tts_service:
+                raise HTTPException(status_code=503, detail="TTS service not initialized")
+            
+            try:
+                audio_data = tts_service.generate_speech(
+                    text=request.text,
+                    voice=request.voice,
+                    speed=request.speed,
+                    pitch=request.pitch
+                )
+                
+                # Add cleanup task
+                background_tasks.add_task(gc.collect)
+                
+                return StreamingResponse(
+                    io.BytesIO(audio_data),
+                    media_type="audio/wav",
+                    headers={
+                        "Content-Disposition": "attachment; filename=speech.wav"
+                    }
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error generating speech: {str(e)}")
+                raise HTTPException(status_code=500, detail=str(e))
+            
+        @app.get("/health")
+        async def health_check():
+            \"\"\"Health check endpoint\"\"\"
+            if not tts_service:
+                return {
+                    "status": "unhealthy",
+                    "message": "TTS service not initialized",
+                    "memory_usage_mb": get_memory_usage()
+                }
+            
+            return {
+                "status": "healthy",
+                "message": "Google Cloud TTS service is running",
+                "memory_usage_mb": get_memory_usage()
             }
+        
+        @app.get("/memory")
+        async def memory_info():
+            \"\"\"Get memory usage information\"\"\"
+            return {
+                "memory_usage_mb": get_memory_usage(),
+                "message": "Memory usage is monitored for optimization"
+            }
+        
+        @app.post("/cleanup")
+        async def force_cleanup():
+            \"\"\"Force cleanup of resources\"\"\"
+            if not tts_service:
+                raise HTTPException(status_code=503, detail="TTS service not initialized")
+            
+            try:
+                tts_service.cleanup()
+                return {"message": "Cleanup completed successfully"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+            
+        @app.options("/generate-speech")
+        async def options_generate_speech():
+            \"\"\"Handle OPTIONS request for CORS\"\"\"
+            return {}
+        
+        @app.exception_handler(500)
+        async def internal_server_error_handler(request, exc):
+            return {"detail": str(exc)}
+        
+        @app.exception_handler(503)
+        async def service_unavailable_handler(request, exc):
+            return {"detail": str(exc)}
+        
+        if __name__ == "__main__":
+            import uvicorn
+            port = int(os.getenv("PORT", 8000))
+            logger.info(f"Starting server on port {port}")
+            uvicorn.run(
+                "main:app",
+                host="0.0.0.0",
+                port=port,
+                workers=1,
+                timeout_keep_alive=30,
+                access_log=True
+            )
+        """
         )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error generating speech: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    if not tts_service:
-        return {
-            "status": "unhealthy",
-            "message": "TTS service not initialized",
-            "memory_usage_mb": get_memory_usage()
-        }
-    
-    return {
-        "status": "healthy",
-        "message": "Google Cloud TTS service is running",
-        "memory_usage_mb": get_memory_usage()
-    }
-
-@app.get("/memory")
-async def memory_info():
-    """Get memory usage information"""
-    return {
-        "memory_usage_mb": get_memory_usage(),
-        "message": "Memory usage is monitored for optimization"
-    }
-
-@app.post("/cleanup")
-async def force_cleanup():
-    """Force cleanup of resources"""
-    if not tts_service:
-        raise HTTPException(status_code=503, detail="TTS service not initialized")
-    
-    try:
-        tts_service.cleanup()
-        return {"message": "Cleanup completed successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.options("/generate-speech")
-async def options_generate_speech():
-    """Handle OPTIONS request for CORS"""
-    return {}
-
-@app.exception_handler(500)
-async def internal_server_error_handler(request, exc):
-    return {"detail": str(exc)}
-
-@app.exception_handler(503)
-async def service_unavailable_handler(request, exc):
-    return {"detail": str(exc)}
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    logger.info(f"Starting server on port {port}")
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port,
-        workers=1,
-        timeout_keep_alive=30,
-        access_log=True
-    )
+        ```
